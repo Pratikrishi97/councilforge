@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/Pratikrishi97/councilforge/discussions
+    about: Ask questions, share use cases, and discuss design ideas with the community.
+  - name: 📖 FAQ
+    url: https://github.com/Pratikrishi97/councilforge/blob/main/docs/FAQ.md
+    about: Check the FAQ before opening an issue — common questions are already answered.
+  - name: 🔒 Security report
+    url: https://github.com/Pratikrishi97/councilforge/security/policy
+    about: Found a security vulnerability? Do NOT open a public issue — follow the security policy.
+  - name: 📚 Provider setup guide
+    url: https://github.com/Pratikrishi97/councilforge/blob/main/docs/PROVIDER_SETUP.md
+    about: Provider configuration, API keys, and troubleshooting.

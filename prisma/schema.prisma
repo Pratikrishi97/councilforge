@@ -1,0 +1,549 @@
+// This is your Prisma schema file,
+// learn more about it at the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// A persistent project — the "memory" unit. Holds long-lived context
+/// (goals, stakeholders, terminology, decisions, assumptions, risks,
+/// open questions, prior summaries) so later runs do not repeat context.
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  sourceType  String /// repo | text | mixed
+  repoUrl     String?
+
+  /// Cached deep repository intelligence snapshot (JSON).
+  repoDetails String?
+  /// Long-lived project memory (JSON): goals, stakeholders, terminology,
+  /// decisions, assumptions, risks, openQuestions, summaries.
+  memory      String?
+  /// Provider routing plan used for this project (JSON): role→providerId map.
+  providerPlan String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions DocVersion[]
+
+  @@index([createdAt])
+}
+
+/// A single versioned artifact within a project. Each generation creates a
+/// new version. Versions link to a parent to support diffing and change
+/// tracking ("living document" support).
+model DocVersion {
+  id        String  @id @default(cuid())
+  projectId String
+  versionNumber Int
+  parentVersionId String?
+
+  docType       String /// PRD | BRD | FRD | SOW | TECH_DESIGN | AUDIT | ROADMAP | GAP_ANALYSIS | AUTO
+  docTypeReason String? /// why this type was chosen (strategy output)
+  sourceType    String
+  sourceInput   String
+  audience      String?
+
+  /// Stage outputs (JSON strings). Each stage persists its structured result.
+  contextMap    String?
+  repoIntel     String?
+  hypotheses    String?
+  debate        String?
+  requirements  String?
+  gaps          String?
+  risks         String?
+  strategy      String?
+  document      String?
+  traceability  String?
+  assumptions   String?
+  confidence    String?
+  openQuestions String?
+  nextActions   String?
+  qualityGates  String?
+  qualityScore  Int?
+
+  /// Multi-round council debate (JSON): { round1, round2, moderator, consensus }
+  debateRounds   String?
+  /// Provider routing log (JSON): [{ stage, role, providerId, providerName, reason, fallback, usedFallback }]
+  providerLog    String?
+  /// Validation council (JSON): { reviews: [{role, issues, recommendations}], consensus }
+  validationCouncil String?
+
+  /// New intelligence stages (JSON strings).
+  research          String? /// autonomous research: { topics, evidenceSummary, references, gaps }
+  competitorIntel   String? /// { competitors: [{name, strengths, weaknesses, gaps, differentiation}] }
+  featureRecs       String? /// { mvp, phase2, activation, retention, monetization, riskReducers, analytics, admin }
+  costEstimate      String? /// { backend, frontend, qa, devops, ai, infra, monthlyOpx, totalRange, confidence }
+  sprintPlan        String? /// { sprints: [{name, goals, items, effort, owners}], milestones, riskCheckpoints }
+  archSimulation    String? /// { failureModes, bottlenecks, whatIfs, operationalRisks }
+  knowledgeGraph    String? /// { nodes: [{id,type,label}], edges: [{source,target,relation}] }
+  decisionJournal   String? /// { decisions: [{decision, rationale, alternatives, tradeoffs, supportedBy, objectedBy, confidence}] }
+  scenarioSimulation String? /// { scenarios: [{question, implications, recommendation}] }
+  aiVoting          String? /// { votes: [{role, option, weight, rationale}], result, method }
+  dynamicCouncil    String? /// { addedRoles: [{role, reason}], activeRoles: string[] }
+  confidenceScores  String? /// { business, requirements, technical, timeline, risk, validation }
+
+  /// Generation manifest for reproducibility (prompt version, provider config,
+  /// role config, round count, validation outcomes, output metadata).
+  generationManifest String? /// JSON
+
+  /// Human-in-the-loop gate state. When gateMode is enabled, the pipeline
+  /// pauses at checkpoints and records which gate was reached.
+  gateState    String? /// JSON: { mode: "enabled"|"disabled", currentGate: string|null, gatesPassed: string[], userFeedback: string|null }
+
+  /// Revision loop state.
+  revisionCount Int     @default(0)
+  revisionFocus String? /// JSON: { sections: string[], focus: string }
+  revised       Boolean @default(false)
+
+  /// Living-document change tracking vs parent version.
+  changeSummary   String? /// human-readable summary of what changed
+  changedSections String? /// JSON: { added: string[], removed: string[], changed: string[] }
+
+  status       String  @default("draft") /// draft | generating | complete | error
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+/// Onboarding state — singleton row tracking provider setup completion.
+model AppSettings {
+  id              String  @id @default("singleton")
+  onboardingComplete Boolean @default(false)
+  providerMode    String  @default("free") /// own-keys | free | hybrid | local
+  registryVersion String? /// hash/version of last registry bootstrap
+  registrySource  String  @default("https://github.com/cheahjs/free-llm-api-resources")
+  registryFetchedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// A provider in the local registry. Bootstrapped from the catalog + the
+/// GitHub source, editable/refreshable by maintainers. User API keys live
+/// in ProviderConfig (masked, never logged).
+model ProviderEntry {
+  id            String  @id @default(cuid())
+  providerId    String  @unique /// slug matching catalog, e.g. "openrouter"
+  name          String
+  category      String  /// free | trial | premium
+  data          String  /// JSON: full ProviderCatalogEntry
+  enabled       Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// User-configured API key for a provider. Keys are stored but masked in UI
+/// and never included in logs or generated documents.
+model ProviderConfig {
+  id            String  @id @default(cuid())
+  providerId    String  @unique
+  apiKeyMasked  String  /// e.g. "sk-...abc4" — masked reference
+  apiKeyEnc     String  /// stored value (in production this would be encrypted)
+  configured    Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// A node in the persistent project knowledge graph. Nodes represent
+/// goals, epics, features, requirements, ACs, test cases, releases, risks,
+/// decisions, stakeholders, etc. Edges connect them.
+model KnowledgeNode {
+  id          String  @id @default(cuid())
+  projectId   String
+  nodeType    String  /// goal | epic | feature | requirement | acceptanceCriteria | testCase | release | risk | decision | stakeholder | dependency
+  label       String
+  description String?
+  /// Structured metadata (JSON): priority, owner, status, confidence, etc.
+  metadata    String?
+  /// Origin version that created/last-updated this node.
+  sourceVersionId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([nodeType])
+}
+
+/// A directed edge in the knowledge graph: source → target with a relation.
+model KnowledgeEdge {
+  id          String  @id @default(cuid())
+  projectId   String
+  sourceId    String
+  targetId    String
+  relation    String  /// decomposes_into | depends_on | tested_by | released_in | mitigates | decided_by | impacts | owned_by
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([sourceId])
+  @@index([targetId])
+}
+
+/// A persistent decision journal entry. Every important decision the council
+/// makes is logged here for auditability and traceability.
+model DecisionJournal {
+  id          String  @id @default(cuid())
+  projectId   String
+  versionId   String?
+  decision    String
+  rationale   String
+  alternativesConsidered String? /// JSON: [{ name, whyRejected }]
+  tradeoffs   String? /// JSON: string[]
+  supportedBy String? /// JSON: string[] (role names)
+  objectedBy  String? /// JSON: [{ role, objection }]
+  confidence  String? /// high | medium | low
+  affectedDocuments String? /// JSON: string[]
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+/// An autonomous research entry — evidence gathered before the council
+/// finalizes its opinion.
+model ResearchEntry {
+  id          String  @id @default(cuid())
+  projectId   String
+  versionId   String?
+  topic       String
+  evidenceSummary String
+  references  String? /// JSON: [{ title, url, relevance }]
+  confidence  String? /// high | medium | low
+  unresolvedGaps String? /// JSON: string[]
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+/// A competitor analysis entry for competitor intelligence.
+model Competitor {
+  id          String  @id @default(cuid())
+  projectId   String
+  name        String
+  strengths   String? /// JSON: string[]
+  weaknesses  String? /// JSON: string[]
+  features    String? /// JSON: string[]
+  gaps        String? /// JSON: string[] (what they're missing)
+  differentiation String? /// JSON: string[] (our opportunities)
+  strategicRecommendations String? /// JSON: string[]
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+/// A scenario simulation result ("what if" analysis).
+model Scenario {
+  id          String  @id @default(cuid())
+  projectId   String
+  question    String  /// e.g. "What if we remove MFA?"
+  implications String? /// JSON: { product, engineering, security, delivery, qa, cost, risk }
+  affectedNodes String? /// JSON: string[] (knowledge node ids)
+  recommendation String?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+/// Audit log entry for enterprise governance. Records all significant actions
+/// (generation, export, provider config changes, gate approvals, etc.).
+model AuditLog {
+  id          String  @id @default(cuid())
+  action      String  /// generate | export | provider_key_added | provider_key_removed | gate_approved | gate_revised | mode_changed | registry_refreshed
+  projectId   String?
+  versionId   String?
+  actor       String  @default("user") /// user | system
+  details     String? /// JSON: action-specific metadata
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+/// Evaluation result — rubric-based scoring of a generated version.
+model Evaluation {
+  id          String  @id @default(cuid())
+  projectId   String
+  versionId   String
+  docType     String
+  /// JSON: { rubric: [{ criterion, weight, score, status, note }] }
+  rubricScores  String
+  overallScore  Int
+  /// JSON: { passed: string[], warnings: string[], failed: string[] }
+  results       String
+  /// JSON: { improved: string[], needsWork: string[] }
+  recommendations String?
+  /// Benchmark mode used: golden | synthetic | prior | feedback | human
+  benchmarkMode String  @default("rubric")
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([versionId])
+}
+
+/// Prompt registry entry — versioned prompt with change history.
+model PromptRegistry {
+  id          String  @id @default(cuid())
+  name        String  /// e.g. "debate_round1", "generate_prd"
+  version     String  /// semver e.g. "2.0.0"
+  purpose     String
+  role        String? /// council role this prompt is for
+  systemPrompt  String  /// the actual system prompt text
+  expectedFormat String? /// json | markdown | text
+  validationRules String? /// JSON: validation rules
+  changeNote  String? /// what changed from prior version
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now())
+
+  @@unique([name, version])
+  @@index([name])
+}
+
+/// User feedback on a version or specific section.
+model UserFeedback {
+  id          String  @id @default(cuid())
+  projectId   String
+  versionId   String?
+  /// helpful | not_helpful | inaccurate | too_generic | missing_context | excellent
+  rating      String
+  comment     String?
+  /// Which section/feature the feedback is about (optional)
+  targetSection String?
+  /// Whether the user accepted or rejected the suggestion
+  action      String? /// accepted | rejected | edited
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([versionId])
+}
+
+/// Policy rule — configurable restrictions for a project.
+model Policy {
+  id          String  @id @default(cuid())
+  projectId   String?
+  /// input_restriction | output_restriction | role_restriction | provider_restriction | data_handling | escalation
+  type        String
+  rule        String  /// the rule definition (JSON or text)
+  enforced    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([type])
+}
+
+/// Research evidence library — reusable evidence across runs.
+model EvidenceLibrary {
+  id          String  @id @default(cuid())
+  projectId   String?
+  topic       String
+  sourceTitle String
+  sourceUrl   String?
+  sourceType  String  /// docs | rfc | competitor | community | official
+  snippet     String
+  confidence  String  /// high | medium | low
+  relevance   String?
+  collectedAt DateTime @default(now())
+
+  @@index([projectId])
+  @@index([topic])
+}
+
+/// Acceptance test generated from requirements.
+model AcceptanceTest {
+  id          String  @id @default(cuid())
+  projectId   String
+  versionId   String?
+  requirementId String  /// links to a functional need ID
+  testId      String  /// e.g. "AT-001"
+  given       String
+  when        String
+  then        String
+  testType    String  /// positive | negative | edge | regression
+  status      String  @default("pending") /// pending | passed | failed
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([versionId])
+}
+
+/// Backlog item — converted from requirements into task-ready items.
+model BacklogItem {
+  id          String  @id @default(cuid())
+  projectId   String
+  versionId   String?
+  itemType    String  /// epic | story | task | subtask | bug | milestone
+  title       String
+  description String?
+  requirementId String?
+  priority    String  @default("medium") /// must | high | medium | low
+  effort      String? /// S | M | L | XL
+  status      String  @default("backlog") /// backlog | ready | in_progress | done
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([versionId])
+}
+
+/// Roadmap phase — delivery sequencing.
+model RoadmapPhase {
+  id          String  @id @default(cuid())
+  projectId   String
+  phaseNumber Int
+  phaseName   String
+  description String?
+  /// JSON: { features: string[], dependencies: string[], risks: string[] }
+  contents    String
+  targetDate  String?
+  confidence  String  @default("medium") /// high | medium | low
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+/// Drift alert — flags when project context becomes stale.
+model DriftAlert {
+  id          String  @id @default(cuid())
+  projectId   String
+  alertType   String  /// requirement_changed | repo_updated | stakeholder_added | assumption_invalid | doc_stale
+  description String
+  impactedArtifacts String? /// JSON: string[]
+  severity    String  @default("medium") /// high | medium | low
+  resolved    Boolean @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([resolved])
+}
+
+/// Observability event — stage timing, provider latency, token usage, errors.
+model ObservabilityEvent {
+  id          String  @id @default(cuid())
+  projectId   String?
+  versionId   String?
+  stage       String
+  providerId  String?
+  durationMs  Int?
+  tokenUsage  Int?
+  status      String  /// success | fallback | error | timeout
+  message     String?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([versionId])
+  @@index([stage])
+}
+
+/// Domain pack — specialized configuration for a project domain.
+model DomainPack {
+  id          String  @id @default(cuid())
+  packId      String  @unique /// e.g. "fintech", "healthcare"
+  name        String
+  description String
+  /// JSON: { roles: string[], riskChecklists: string[], docStructure: object, policyRules: string[], rubrics: object, recommendedProviders: string[] }
+  config      String
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([packId])
+}
+
+/// A comment or annotation on a document section — for collaboration.
+model Comment {
+  id          String  @id @default(cuid())
+  projectId   String
+  versionId   String?
+  /// Which section the comment targets (heading text or "general")
+  targetSection String
+  author      String  @default("user")
+  body        String
+  resolved    Boolean @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([versionId])
+}
+
+/// A notification for project events (drift, validation, provider, etc.)
+model Notification {
+  id          String  @id @default(cuid())
+  projectId   String?
+  type        String  /// validation_failed | consensus_blocked | provider_fallback | drift_detected | policy_violation | health_dropped | benchmark_regression | review_pending | version_changed | release_gate
+  title       String
+  message     String
+  severity    String  @default("medium") /// high | medium | low
+  read        Boolean @default(false)
+  details     String? /// JSON
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+/// Provider performance record — tracks latency, errors, quality per provider+role.
+model ProviderPerformance {
+  id          String  @id @default(cuid())
+  providerId  String
+  stage       String
+  role        String?
+  durationMs  Int
+  status      String  /// success | fallback | error
+  tokenUsage  Int?
+  qualityScore Int?  /// from evaluation if available
+  projectId   String?
+  versionId   String?
+  createdAt   DateTime @default(now())
+
+  @@index([providerId])
+  @@index([stage])
+  @@index([createdAt])
+}
+
+/// Plugin/skill registry entry — extensible skill format.
+model PluginRegistry {
+  id          String  @id @default(cuid())
+  pluginId    String  @unique
+  name        String
+  description String
+  category    String  /// research | debate | validation | prompt | provider | export | policy | domain | evaluation | simulation
+  version     String
+  /// JSON: { entryPoint, config, dependencies, author, license }
+  manifest    String
+  enabled     Boolean @default(true)
+  installedAt DateTime @default(now())
+
+  @@index([category])
+}
+
+
+
+

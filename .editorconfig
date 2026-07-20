@@ -1,0 +1,36 @@
+# EditorConfig is awesome: https://editorconfig.org
+# Keep this file at the repo root so every editor picks it up automatically.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{ts,tsx,js,jsx,mjs,cjs}]
+indent_size = 2
+
+[*.{md,mdx}]
+indent_size = 2
+# Preserve trailing two spaces that Markdown uses for hard line breaks.
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.{json,jsonc}]
+indent_size = 2
+
+[*.{css,scss}]
+indent_size = 2
+
+[Makefile]
+# Makefiles require literal tabs.
+indent_style = tab
+
+[*.{sh,bash}]
+indent_size = 2

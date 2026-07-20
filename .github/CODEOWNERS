@@ -1,0 +1,30 @@
+# CODEOWNERS — automatic review routing for CouncilForge
+# Docs: https://docs.github.com/en/repositories/managing-your-repositories-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Until a maintainer team exists, all paths route to the repo owner.
+# Replace @Pratikrishi97 with a team handle (e.g. @Pratikrishi97/maintainers)
+# once an org team is created.
+
+# Default owner for everything
+*                           @Pratikrishi97
+
+# Core orchestration — the 29-stage pipeline
+/src/lib/pipeline.ts        @Pratikrishi97
+/src/lib/prompts.ts         @Pratikrishi97
+
+# Provider routing & registry
+/src/lib/provider-router.ts     @Pratikrishi97
+/src/lib/provider-catalog.ts    @Pratikrishi97
+/src/lib/provider-performance.ts @Pratikrishi97
+
+# Portable, framework-free skill package
+/skill/                     @Pratikrishi97
+
+# Documentation & launch surfaces
+/docs/                      @Pratikrishi97
+/examples/                  @Pratikrishi97
+/assets/                    @Pratikrishi97
+/README.md                  @Pratikrishi97
+
+# Community & CI configuration
+/.github/                   @Pratikrishi97

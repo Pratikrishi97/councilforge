@@ -1,0 +1,58 @@
+version: 2
+
+updates:
+  # JavaScript / TypeScript dependencies (managed via Bun + package.json)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: scope
+    labels:
+      - dependencies
+      - npm
+    groups:
+      # Bundle patch/minor updates so the inbox stays manageable.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "react-*"
+          - "@radix-ui/*"
+      next:
+        patterns:
+          - "next"
+          - "next-*"
+          - "eslint-config-next"
+      prisma:
+        patterns:
+          - "prisma"
+          - "@prisma/client"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "tailwindcss-animate"
+          - "tw-animate-css"
+          - "@tailwindcss/*"
+      # Major versions always get their own PR so they can be reviewed carefully.
+
+  # GitHub Actions used in workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      include: scope
+    labels:
+      - dependencies
+      - github-actions

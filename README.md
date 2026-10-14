@@ -1,5 +1,21 @@
 # CouncilForge
 
+## Start with a real decision
+
+**For product managers, business analysts and engineering leads:** explore a brief through multiple AI perspectives, then inspect the rationale behind the resulting requirements and roadmap.
+
+- [See an input/output example](examples/README.md) before setting up the application.
+- [Explore the portable skill package](skill/) for the AI-IDE workflow.
+- Use the setup instructions below to run the app; provider configuration depends on the execution mode.
+
+**Evaluation boundary:** a visible debate is not proof that an answer is correct. Compare outputs with a single-model baseline and review requirements, sources, cost and latency for your own use case.
+
+If you try it, [open an issue](https://github.com/Pratikrishi97/councilforge/issues) with a non-sensitive input, expected result, actual result and the execution mode. Concrete counterexamples are particularly useful.
+
+Built by [Pratik Parida](https://github.com/Pratikrishi97) · [Product portfolio](https://pratik-parida.netlify.app/)
+
+---
+
 > A full AI Operating System that turns source material into decision-ready documents — through a visible, multi-role AI Council debate.
 
 ![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)
